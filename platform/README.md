@@ -196,8 +196,9 @@ test/                  node:test suite
 
 ## Design notes
 
-The web UI uses one rose accent (from the original brand) on neutral greys, Geist / Geist Mono, Phosphor icons, and
-follows the system light/dark setting. Photography is served from Unsplash's CDN (`PHOTOS` in `public/app.js`; each
+The web UI uses one rose accent (from the original brand) on neutral greys, Bricolage Grotesque for headlines,
+Geist / Geist Mono for text and numbers, and Phosphor icons. The theme button in the nav cycles System, Light and
+Dark; the choice is remembered in the browser and applied before first paint. Photography is served from Unsplash's CDN (`PHOTOS` in `public/app.js`; each
 event's dashboard cover is picked by event type). Background videos are muted, loop only while on screen, and fall
 back to their poster frame when the visitor prefers reduced motion.
 

@@ -49,9 +49,28 @@ let stream = null;
 let currentTab = "overview";
 let navObserver = null;
 
-api("/api/health").then((h) => {
-  document.getElementById("mode").innerHTML = `Agents: ${esc(h.agents)}<br>Comms ${h.comms.live ? "live" : "simulated"}, vendors ${esc(h.vendorSearch)}`;
-}).catch(() => {});
+// Which integrations are live; shown in the landing footer.
+let health = null;
+const healthReady = api("/api/health").then((h) => (health = h)).catch(() => null);
+const statusLine = () => health ? `Agents: ${esc(health.agents)}<br>Messages: ${health.comms.live ? "live" : "simulated"}<br>Vendor search: ${esc(health.vendorSearch)}` : "Checking status";
+
+// ── Theme: System, Light or Dark. The choice is remembered on this device. ──
+const THEMES = [["system", "ph-desktop", "System"], ["light", "ph-sun", "Light"], ["dark", "ph-moon", "Dark"]];
+const $toggle = document.getElementById("theme-toggle");
+function readTheme() { try { return localStorage.getItem("eventifyre-theme") || "system"; } catch { return "system"; } }
+function applyTheme(t) {
+  if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  const [, icon, name] = THEMES.find(([k]) => k === t);
+  $toggle.innerHTML = `<i class="ph ${icon}"></i>`;
+  $toggle.setAttribute("aria-label", `Theme: ${name}. Switch theme`);
+  $toggle.title = `Theme: ${name}`;
+}
+$toggle.addEventListener("click", () => {
+  const next = THEMES[(THEMES.findIndex(([k]) => k === readTheme()) + 1) % THEMES.length][0];
+  try { localStorage.setItem("eventifyre-theme", next); } catch {}
+  applyTheme(next);
+});
+applyTheme(readTheme());
 
 window.addEventListener("hashchange", route);
 route();
@@ -190,7 +209,7 @@ async function renderLanding(scrollTo) {
         </aside>
         <form class="form" id="intake" novalidate data-reveal>
           ${intakeFields(questions)}
-          <label class="check"><input type="checkbox" name="fastForward"><span>Demo mode: run day-of and wrap-up tasks now instead of waiting for the date</span></label>
+          <div class="form__extras"><label class="check"><input type="checkbox" name="fastForward"><span>Demo mode: run day-of and wrap-up tasks now instead of waiting for the date</span></label></div>
           <div class="form__submit">
             <button class="btn btn--primary" type="submit">Assemble my team <i class="ph ph-arrow-right"></i></button>
             <span class="form__error" id="err" role="alert"></span>
@@ -200,10 +219,11 @@ async function renderLanding(scrollTo) {
     </section>
 
     <footer class="footer"><div class="wrap">
-      <a href="#/" class="logo"><span class="logo__mark" aria-hidden="true">E</span>Eventifyre</a>
-      <span>Photography from Unsplash. Video from Mixkit.</span>
-      <span>&copy; 2026 Eventifyre</span>
+      <div><a href="#/" class="logo"><span class="logo__mark" aria-hidden="true">E</span>Eventifyre</a><p>An AI event team that plans, books and runs your event, with you approving every commitment.</p></div>
+      <div><h4>Platform status</h4><div class="status" id="status">${statusLine()}</div></div>
+      <div><h4>Credits</h4><p style="margin-top:0">Photography from Unsplash. Video from Mixkit.<br>&copy; 2026 Eventifyre</p></div>
     </div></footer>`;
+  healthReady.then(() => { const el = document.getElementById("status"); if (el) el.innerHTML = statusLine(); });
 
   // Transparent nav over the hero, frosted once the hero scrolls away.
   setNav("media", "home");
@@ -219,7 +239,14 @@ async function renderLanding(scrollTo) {
 const PAIRED = new Set(["date", "city", "guestCount", "budget", "currency", "hostEmail", "hostPhone", "dietaryNeeds", "accessibilityNeeds"]);
 
 function intakeFields(questions) {
-  const sections = { vision: "Your vision", basics: "The basics", guests: "Guests", details: "Details", contact: "About you", autonomy: "How hands-on do you want to be?" };
+  const sections = {
+    vision: ["Your vision", "In your own words. The more you share, the sharper the plan."],
+    basics: ["The basics", "Leave blank anything you haven't decided yet."],
+    guests: ["Guests", "Sizes the venue, the food and any marketing."],
+    details: ["Details", "Budget and must-haves guide every quote."],
+    contact: ["About you", "Approval requests and updates go here."],
+    autonomy: ["Your control", "Agents never pay or sign anything without you."],
+  };
   const field = (q) => {
     if (q.type === "checkbox") return `<label class="check"><input type="checkbox" name="${q.id}"><span>${esc(q.label)}</span></label>`;
     const id = `f-${q.id}`;
@@ -231,7 +258,7 @@ function intakeFields(questions) {
     else input = `<input type="${q.type}" ${attrs} ${q.type === "number" ? 'min="1" inputmode="numeric"' : ""}>`;
     return `<div class="field"><label for="${id}">${esc(q.label)}${q.required ? ' <span aria-hidden="true" style="color:var(--accent)">*</span>' : ""}</label>${help}${input}<span class="err" id="${id}-err"></span></div>`;
   };
-  return Object.entries(sections).map(([s, title]) => {
+  return Object.entries(sections).map(([s, [title, hint]]) => {
     // Keep questionnaire order; group consecutive short fields into two-column rows.
     const qs = questions.filter((q) => q.section === s);
     // Checkboxes wait until the row they interrupt is complete.
@@ -249,7 +276,7 @@ function intakeFields(questions) {
       else { flush(); html += field(q); }
     }
     flush();
-    return `<fieldset><legend>${title}</legend>${html}</fieldset>`;
+    return `<fieldset><legend class="sr-only">${title}</legend><div class="fs"><div class="fs__head" aria-hidden="true"><h3>${title}</h3><p>${hint}</p></div><div class="fs__body">${html}</div></div></fieldset>`;
   }).join("");
 }
 

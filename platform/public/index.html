@@ -7,7 +7,11 @@
   <meta name="description" content="Describe your event in plain words. A team of AI agents finds venues and vendors, collects quotes and runs the day, with your approval at every commitment.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    // Apply a saved Light/Dark choice before first paint (no flash). "system" leaves it to the OS.
+    try { const t = localStorage.getItem("eventifyre-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+  </script>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
   <link rel="preload" as="image" href="media/hero-toast.jpg">
   <link rel="stylesheet" href="style.css">
@@ -18,11 +22,13 @@
       <span class="logo__mark" aria-hidden="true">E</span>Eventifyre
     </a>
     <nav class="nav__links" aria-label="Primary">
-      <a href="#/" data-nav="home">How it works</a>
+      <a href="#/how" data-nav="home">How it works</a>
       <a href="#/events" data-nav="events">My events</a>
     </nav>
-    <span id="mode" class="mode" aria-live="polite"></span>
-    <a href="#/plan" class="btn btn--primary btn--sm nav__cta">Plan my event</a>
+    <div class="nav__end">
+      <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Theme: system"><i class="ph ph-desktop"></i></button>
+      <a href="#/plan" class="btn btn--primary btn--sm nav__cta">Plan my event</a>
+    </div>
   </header>
   <main id="app"></main>
   <script src="app.js"></script>
