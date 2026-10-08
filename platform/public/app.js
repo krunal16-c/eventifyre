@@ -219,10 +219,10 @@ async function renderLanding(scrollTo) {
     </section>
 
     <footer class="footer"><div class="wrap">
-      <div><a href="#/" class="logo"><span class="logo__mark" aria-hidden="true">E</span>Eventifyre</a><p>An AI event team that plans, books and runs your event, with you approving every commitment.</p></div>
+      <div><a href="#/" class="logo"><svg class="logo__mark" aria-hidden="true"><use href="#logo-mark"/></svg><span class="logo__word">Eventifyre</span></a><p>An AI event team that plans, books and runs your event, with you approving every commitment.</p></div>
       <div><h4>Platform status</h4><div class="status" id="status">${statusLine()}</div></div>
       <div><h4>Credits</h4><p style="margin-top:0">Photography from Unsplash. Video from Mixkit.<br>&copy; 2026 Eventifyre</p></div>
-    </div></footer>`;
+    </div><div class="wrap"><div class="footer__word" aria-hidden="true">Eventifyre</div></div></footer>`;
   healthReady.then(() => { const el = document.getElementById("status"); if (el) el.innerHTML = statusLine(); });
 
   // Transparent nav over the hero, frosted once the hero scrolls away.

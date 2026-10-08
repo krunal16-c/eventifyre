@@ -13,13 +13,25 @@
     try { const t = localStorage.getItem("eventifyre-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
   </script>
   <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preload" as="image" href="media/hero-toast.jpg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Brand mark: a flame (the "fyre") with a celebration spark cut out of it, in the original coral-to-rose brand gradient. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="brand-grad" x1="16" y1="31" x2="16" y2="1" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#ff0844"/><stop offset="1" stop-color="#ffb199"/>
+      </linearGradient>
+      <symbol id="logo-mark" viewBox="0 0 32 32">
+        <path fill="url(#brand-grad)" fill-rule="evenodd" d="M16 1.5C17.2 6.8 27.5 11.4 27.5 20c0 6.4-5.1 10.5-11.5 10.5S4.5 26.4 4.5 20c0-4.9 2.9-8.4 6-10.8.1 2.6 1.2 4.4 3.1 5.1C13 10.6 13.9 5.4 16 1.5ZM16 14.5c-.7 3.8-2.7 5.8-6.5 6.5 3.8.7 5.8 2.7 6.5 6.5.7-3.8 2.7-5.8 6.5-6.5-3.8-.7-5.8-2.7-6.5-6.5Z"/>
+      </symbol>
+    </defs>
+  </svg>
   <header class="nav" id="nav">
     <a href="#/" class="logo" aria-label="Eventifyre home">
-      <span class="logo__mark" aria-hidden="true">E</span>Eventifyre
+      <svg class="logo__mark" aria-hidden="true"><use href="#logo-mark"/></svg><span class="logo__word">Eventifyre</span>
     </a>
     <nav class="nav__links" aria-label="Primary">
       <a href="#/how" data-nav="home">How it works</a>
