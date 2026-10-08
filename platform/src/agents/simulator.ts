@@ -45,8 +45,10 @@ export async function simulateTask(eventId: string, task: Task): Promise<AgentRe
       return { status: "done", summary: `Booked ${vendor?.name ?? "vendor"} for ${money(approved.amount ?? 0, cur)} after host approval; contract and deposit invoice requested.` };
     }
     let quotes = rec.quotes.filter((q) => q.category === task.vendorCategory && !rejected.some((r) => r.quoteId === q.id));
-    if (quotes.length === 0) {
-      await sourceQuotes(ctx, task.vendorCategory, bp.city);
+    // Like a human planner, widen the search before going back to the host empty-handed.
+    const queries = [bp.city, `${bp.theme} ${bp.city}`, `${task.vendorCategory} near ${bp.city}`];
+    for (let i = 0; quotes.length === 0 && i < queries.length; i++) {
+      await sourceQuotes(ctx, task.vendorCategory, queries[i]);
       quotes = store.get(eventId)!.quotes.filter((q) => q.category === task.vendorCategory && !rejected.some((r) => r.quoteId === q.id));
     }
     if (quotes.length === 0) return { status: "blocked", summary: `No available ${task.vendorCategory} options found; widening the search needs host input.` };
@@ -56,7 +58,7 @@ export async function simulateTask(eventId: string, task: Task): Promise<AgentRe
     const alts = ranked.filter((q) => q.id !== pick.id).slice(0, 3).map((q) => `${store.get(eventId)!.vendors.find((v) => v.id === q.vendorId)?.name}: ${money(q.amount, cur)}`);
     await call(ctx, "request_approval", {
       kind: "booking", title: `Book ${vendor.name} (${task.vendorCategory}) for ${money(pick.amount, cur)}`,
-      details: `Recommendation: ${vendor.name} — rating ${vendor.rating ?? "n/a"}, quote ${money(pick.amount, cur)} (30% deposit to hold the date).\nAlternatives: ${alts.join("; ") || "none"}.`,
+      details: `Recommendation: ${vendor.name}, rating ${vendor.rating ?? "n/a"}, quote ${money(pick.amount, cur)} (30% deposit to hold the date).\nAlternatives: ${alts.join("; ") || "none"}.`,
       amount: pick.amount, vendor_id: vendor.id, quote_id: pick.id,
     });
     return { status: "waiting_approval", summary: `Recommended ${vendor.name} at ${money(pick.amount, cur)}; awaiting host approval.` };
@@ -74,7 +76,7 @@ export async function simulateTask(eventId: string, task: Task): Promise<AgentRe
     if (rejected.length && task.attempts > 3) return { status: "blocked", summary: "Host rejected the drafts; waiting for direction." };
     const kind = ASSET_FOR[shortKey];
     if (kind) {
-      await call(ctx, "create_marketing_asset", { kind, channel: kind === "social_post" ? "instagram" : "email", title: `${task.title} — ${bp.title}`, content: draftCopy(kind, bp.title, bp.date, bp.city, rec.brief.hostName) });
+      await call(ctx, "create_marketing_asset", { kind, channel: kind === "social_post" ? "instagram" : "email", title: `${task.title}: ${bp.title}`, content: draftCopy(kind, bp.title, bp.date, bp.city, rec.brief.hostName) });
     } else {
       await call(ctx, "request_approval", { kind: "decision", title: task.title, details: `${task.description}\n\nProposed plan prepared by the ${task.roleId.replace(/_/g, " ")} agent based on the blueprint.` });
     }
@@ -84,7 +86,7 @@ export async function simulateTask(eventId: string, task: Task): Promise<AgentRe
   // ── Everything else: produce what the task describes. ──
   switch (shortKey) {
     case "host_kickoff":
-      await call(ctx, "message_host", { subject: `Your event "${bp.title}" is in motion`, body: `Hi ${rec.brief.hostName},\n\nYour AI event team is staffed (${rec.roster.length} agents) and working. Budget: ${money(bp.budget, cur)} for ${bp.guestCount} guests.\n\nOpen questions:\n${bp.openQuestions.map((q) => `• ${q}`).join("\n") || "• None — we have what we need."}\n\nYou'll get approval requests before anything is booked or paid.` });
+      await call(ctx, "message_host", { subject: `Your event "${bp.title}" is in motion`, body: `Hi ${rec.brief.hostName},\n\nYour AI event team is staffed (${rec.roster.length} agents) and working. Budget: ${money(bp.budget, cur)} for ${bp.guestCount} guests.\n\nOpen questions:\n${bp.openQuestions.map((q) => `• ${q}`).join("\n") || "• None, we have what we need."}\n\nYou'll get approval requests before anything is booked or paid.` });
       break;
     case "run_of_show": {
       const start = 18 * 60;
@@ -114,9 +116,10 @@ export async function simulateTask(eventId: string, task: Task): Promise<AgentRe
   return { status: "done", summary: `${task.title}: completed by the ${task.roleId.replace(/_/g, " ")} agent.` };
 }
 
-async function sourceQuotes(ctx: ToolContext, category: string, city: string): Promise<number> {
-  const found = await call(ctx, "search_vendors", { category, query: city, limit: 4 });
-  const vendors = ((found?.vendors ?? []) as { id: string; name: string; hasEmail: boolean; hasPhone: boolean }[]).slice(0, 3);
+async function sourceQuotes(ctx: ToolContext, category: string, query: string): Promise<number> {
+  const found = await call(ctx, "search_vendors", { category, query, limit: 4 });
+  const contacted = new Set(store.get(ctx.eventId)!.communications.filter((c) => c.direction === "outbound").map((c) => c.vendorId));
+  const vendors = ((found?.vendors ?? []) as { id: string; name: string; hasEmail: boolean; hasPhone: boolean }[]).filter((v) => !contacted.has(v.id)).slice(0, 3);
   const rec = store.get(ctx.eventId)!;
   const bp = rec.blueprint!;
   let quotes = 0;
@@ -147,8 +150,8 @@ function draftCopy(kind: MarketingAsset["kind"], title: string, date: string | n
   switch (kind) {
     case "invitation": return `You're invited to ${title}!\n${when} · ${city}\nHosted by ${host}. Kindly RSVP and let us know about any dietary or accessibility needs.`;
     case "social_post": return `Something special is coming to ${city} on ${when}: ${title}. Save the date ✨ #${title.replace(/[^a-z0-9]/gi, "").slice(0, 20)}`;
-    case "press_release": return `FOR IMMEDIATE RELEASE — ${host} presents ${title}, ${when} in ${city}. [Details, quotes and media contact]`;
+    case "press_release": return `FOR IMMEDIATE RELEASE: ${host} presents ${title}, ${when} in ${city}. [Details, quotes and media contact]`;
     case "landing_page": return `${title}\n${when} · ${city}\nGrab your spot before it sells out.`;
-    default: return `${title} — ${when} in ${city}. More details inside.`;
+    default: return `${title}, ${when} in ${city}. More details inside.`;
   }
 }

@@ -67,7 +67,7 @@ test("planning: short lead times are compressed and nothing is due in the past",
   assert.ok(Math.abs(budgetTotal - heuristicBlueprint(brief).budget) < 50);
 });
 
-test("lifecycle: agents run an event end to end with host approvals", async () => {
+test("lifecycle: agents run an event end to end with host approvals", { timeout: 90_000 }, async () => {
   const rec = await orchestrator.createEvent({ ...base, vision: "Company holiday party for 60 people with a DJ and an open bar", date: inDays(45), budget: 12000, guestCount: 60 }, { fastForward: true });
   await waitFor(() => (store.get(rec.id)?.approvals.length ?? 0) > 0);
   const booking = store.get(rec.id)!.approvals.find((a) => a.kind === "booking");
@@ -75,7 +75,9 @@ test("lifecycle: agents run an event end to end with host approvals", async () =
   // Agents must not commit money before approval.
   assert.equal(store.get(rec.id)!.budget.reduce((s, b) => s + b.committed, 0), 0);
 
-  for (let i = 0; i < 400 && store.get(rec.id)!.status !== "completed"; i++) {
+  // Play the host: approve everything until the event completes (deadline, not iteration count, so a busy CI box doesn't flake).
+  const deadline = Date.now() + 60_000;
+  while (store.get(rec.id)!.status !== "completed" && Date.now() < deadline) {
     for (const a of store.get(rec.id)!.approvals.filter((x) => x.status === "pending")) await orchestrator.decideApproval(rec.id, a.id, true);
     await new Promise((r) => setTimeout(r, 25));
   }

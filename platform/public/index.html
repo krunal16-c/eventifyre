@@ -3,21 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eventifyre — AI Event Team</title>
+  <title>Eventifyre | Your AI event team</title>
+  <meta name="description" content="Describe your event in plain words. A team of AI agents finds venues and vendors, collects quotes and runs the day, with your approval at every commitment.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Kumbh+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <link rel="preload" as="image" href="media/hero-toast.jpg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav class="nav">
-    <a href="#/" class="logo">Eventifyre</a>
-    <div class="nav__links">
-      <a href="#/">Plan an event</a>
-      <a href="#/events">My events</a>
-    </div>
-    <span id="mode" class="mode"></span>
-  </nav>
+  <header class="nav" id="nav">
+    <a href="#/" class="logo" aria-label="Eventifyre home">
+      <span class="logo__mark" aria-hidden="true">E</span>Eventifyre
+    </a>
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#/" data-nav="home">How it works</a>
+      <a href="#/events" data-nav="events">My events</a>
+    </nav>
+    <span id="mode" class="mode" aria-live="polite"></span>
+    <a href="#/plan" class="btn btn--primary btn--sm nav__cta">Plan my event</a>
+  </header>
   <main id="app"></main>
   <script src="app.js"></script>
 </body>

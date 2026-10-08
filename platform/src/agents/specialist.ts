@@ -57,7 +57,7 @@ function taskPrompt(rec: EventRecord, task: Task): string {
   ];
   if (decided.length) {
     lines.push("\nHost decisions since your last run:");
-    for (const a of decided) lines.push(`- ${a.title}: ${a.status.toUpperCase()}${a.decisionNote ? ` — "${a.decisionNote}"` : ""}`);
+    for (const a of decided) lines.push(`- ${a.title}: ${a.status.toUpperCase()}${a.decisionNote ? ` (host note: "${a.decisionNote}")` : ""}`);
     lines.push("Act on these: confirm approved bookings with the vendor and update the budget's committed amount; for rejections, follow the host's note or present alternatives.");
   }
   if (inbound.length) {

@@ -133,7 +133,7 @@ async function runOne(eventId: string, task: Task): Promise<void> {
     const a = r.roster.find((x) => x.roleId === t.roleId);
     if (a) a.status = roleTasks.every((x) => x.status === "done" || x.status === "skipped") ? "done" : roleTasks.some((x) => x.status.startsWith("waiting")) ? "waiting" : "idle";
   });
-  await store.log(eventId, task.roleId, "status", `${result.status === "done" ? "Done" : result.status.replace("_", " ")}: ${task.title} — ${result.summary}`);
+  await store.log(eventId, task.roleId, "status", `${result.status === "done" ? "Done" : result.status.replace("_", " ")}: ${task.title}. ${result.summary}`);
 }
 
 /**
@@ -186,7 +186,7 @@ export async function decideApproval(eventId: string, approvalId: string, approv
       if (asset) asset.status = approve ? "approved" : "draft";
     }
   });
-  await store.log(eventId, approval.roleId, "approval", `Host ${approve ? "approved" : "rejected"}: ${approval.title}${note ? ` — "${note}"` : ""}`);
+  await store.log(eventId, approval.roleId, "approval", `Host ${approve ? "approved" : "rejected"}: ${approval.title}${note ? ` (note: "${note}")` : ""}`);
 
   if (approve && approval.action?.type === "send") {
     const p = approval.action.payload as { channel: "email" | "sms" | "voice"; vendorId?: string; to: string; subject?: string; body: string };

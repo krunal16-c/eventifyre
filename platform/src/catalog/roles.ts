@@ -139,7 +139,7 @@ export const ROLES: RoleDefinition[] = [
     coreFor: [...CELEBRATIONS, "gala_fundraiser", "product_launch", "networking"], optionalFor: ["conference", "corporate_offsite", "festival"],
     triggers: ["decor", "decoration", "theme", "themed", "balloon", "backdrop", "installation", "aesthetic", "vibe", "styling", "gatsby", "boho", "rustic", "glam"],
     tasks: [
-      t("decor_plan", "Decor plan by zone", "planning", 90, "Entrance, main room, tables, stage, photo moment, restrooms — items, quantities and look.", { dependsOn: ["creative_director.concept", "venue_scout.book_venue"] }),
+      t("decor_plan", "Decor plan by zone", "planning", 90, "Entrance, main room, tables, stage, photo moment, restrooms: items, quantities and look.", { dependsOn: ["creative_director.concept", "venue_scout.book_venue"] }),
       t("decor_quotes", "Get decorator quotes", "sourcing", 70, "Brief 3 decorators with the style guide and request proposals.", { dependsOn: ["decor_plan"], vendorCategory: "event decorator" }),
       t("book_decor", "Book decorator", "booking", 55, "Choose proposal and request host approval.", { dependsOn: ["decor_quotes"], requiresApproval: true, vendorCategory: "event decorator" }),
     ],
@@ -212,7 +212,7 @@ export const ROLES: RoleDefinition[] = [
     id: "guest_manager",
     title: "Guest List, Invitations & RSVP Manager",
     department: "Guest Experience",
-    mission: "Get the right people invited, informed and confirmed — and make every guest feel personally looked after.",
+    mission: "Get the right people invited, informed and confirmed, and make every guest feel personally looked after.",
     responsibilities: ["Guest list & segments", "Save-the-dates and invitations", "RSVP tracking and reminders", "Seating plan", "Guest FAQ and concierge replies"],
     channels: ["email", "sms"], vendorCategories: ["stationery"], coreFor: ALL, optionalFor: [], triggers: [],
     tasks: [
@@ -258,7 +258,7 @@ export const ROLES: RoleDefinition[] = [
     id: "photo_video",
     title: "Photography, Video & Livestream Producer",
     department: "Guest Experience",
-    mission: "Capture the event so it lives on — and stream it if needed.",
+    mission: "Capture the event so it lives on, and stream it if needed.",
     responsibilities: ["Shot list", "Photographer/videographer booking", "Livestream setup", "Content delivery timelines"],
     channels: ["email", "sms"], vendorCategories: ["photographer", "videographer"],
     coreFor: ["wedding", "gala_fundraiser", "conference", "product_launch", "concert", "religious_cultural"], optionalFor: [...CELEBRATIONS, "festival", "networking", "sports"],
@@ -391,7 +391,7 @@ export const ROLES: RoleDefinition[] = [
     id: "social_media",
     title: "Social Media & Content Manager",
     department: "Marketing & Growth",
-    mission: "Build buzz before, live-cover during, and recap after — on the channels the audience uses.",
+    mission: "Build buzz before, live-cover during, and recap after, on the channels the audience uses.",
     responsibilities: ["Content calendar", "Posts, captions, hashtags", "Influencer outreach", "Live coverage", "Recap content"],
     channels: ["email", "internal"], vendorCategories: ["influencer"],
     coreFor: PUBLIC_EVENTS, optionalFor: ["wedding", "birthday"],
@@ -421,7 +421,7 @@ export const ROLES: RoleDefinition[] = [
     id: "ticketing_registration",
     title: "Ticketing & Registration Manager",
     department: "Marketing & Growth",
-    mission: "Make it effortless to buy, register and check in — and track every attendee.",
+    mission: "Make it effortless to buy, register and check in, and track every attendee.",
     responsibilities: ["Ticket tiers & pricing", "Registration page", "Promo codes", "Check-in & badge flow", "Refund policy"],
     channels: ["email", "sms"], vendorCategories: ["ticketing platform"],
     coreFor: ["conference", "concert", "festival", "workshop", "hackathon", "sports", "networking", "trade_show"], optionalFor: ["gala_fundraiser", "community"],
@@ -444,7 +444,7 @@ export const ROLES: RoleDefinition[] = [
     tasks: [
       t("sponsor_deck", "Sponsorship tiers & deck", "planning", 120, "Tiers, benefits, pricing, audience stats.", { dependsOn: ["marketing_strategist.positioning"] }),
       t("sponsor_outreach", "Sponsor prospecting & outreach", "sourcing", 100, "Build prospect list and send personalized pitches.", { dependsOn: ["sponsor_deck"] }),
-      t("sponsor_fulfilment", "Sponsor deliverables tracker", "preparation", 14, "Logos, booth space, mentions, tickets — confirm each.", { dependsOn: ["sponsor_outreach"] }),
+      t("sponsor_fulfilment", "Sponsor deliverables tracker", "preparation", 14, "Logos, booth space, mentions, tickets: confirm each.", { dependsOn: ["sponsor_outreach"] }),
     ],
   },
 

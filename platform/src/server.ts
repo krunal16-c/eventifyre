@@ -69,7 +69,7 @@ export function createApp() {
   });
 
   app.get("/api/events", (_req, res) => {
-    res.json(store.list().map((r) => ({ id: r.id, title: r.blueprint?.title ?? r.brief.vision.slice(0, 60), status: r.status, date: r.blueprint?.date ?? r.brief.date ?? null, city: r.brief.city, createdAt: r.createdAt, pendingApprovals: r.approvals.filter((a) => a.status === "pending").length })));
+    res.json(store.list().map((r) => ({ id: r.id, title: r.blueprint?.title ?? r.brief.vision.slice(0, 60), eventType: r.blueprint?.eventType ?? null, status: r.status, date: r.blueprint?.date ?? r.brief.date ?? null, city: r.brief.city, createdAt: r.createdAt, pendingApprovals: r.approvals.filter((a) => a.status === "pending").length })));
   });
 
   app.get("/api/events/:id", (req, res) => {

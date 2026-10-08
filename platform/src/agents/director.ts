@@ -87,11 +87,11 @@ export function heuristicBlueprint(brief: Brief): Blueprint {
   const styleKeywords = [...new Set(words.filter((w) => !stop.has(w)))].slice(0, 8);
   const openQuestions: string[] = [];
   if (!brief.date) openQuestions.push("What date (or date range) should we target?");
-  if (!brief.budget) openQuestions.push(`No budget given — we assumed ${budget} ${brief.currency ?? "USD"}. Please confirm.`);
+  if (!brief.budget) openQuestions.push(`No budget given, so we assumed ${budget} ${brief.currency ?? "USD"}. Please confirm.`);
   if (!brief.guestCount) openQuestions.push(`Roughly how many guests? We assumed ${guestCount}.`);
 
   return {
-    title: vision.split(/[.!\n]/)[0].slice(0, 70) || profile.label,
+    title: shortTitle(vision) || profile.label,
     eventType: profile.id,
     summary: vision.slice(0, 400),
     theme: styleKeywords.slice(0, 3).join(" · ") || profile.label,
@@ -111,4 +111,12 @@ export function heuristicBlueprint(brief: Brief): Blueprint {
     openQuestions,
     budgetAllocation: profile.budgetAllocation,
   };
+}
+
+/** First sentence of the vision, cut at a word boundary so titles never end mid-word. */
+function shortTitle(vision: string, max = 60): string {
+  const first = vision.split(/[.!?\n]/)[0].trim();
+  if (first.length <= max) return first;
+  const cut = first.slice(0, max);
+  return `${cut.slice(0, cut.lastIndexOf(" ")).replace(/[,;:\s]+$/, "")}…`;
 }

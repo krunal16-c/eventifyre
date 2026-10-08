@@ -189,9 +189,17 @@ src/
   comms/               email/SMS/voice providers, voice agent, simulated vendor replies
   vendors/directory.ts Google Places search + simulated directory
   store.ts             JSON-file event store with per-event serialized writes
-public/                questionnaire + live dashboard (vanilla JS, no build step)
+public/                landing + questionnaire + live dashboard (vanilla JS, no build step)
+  media/               self-hosted background clips (Mixkit free license) and their poster frames
 test/                  node:test suite
 ```
+
+## Design notes
+
+The web UI uses one rose accent (from the original brand) on neutral greys, Geist / Geist Mono, Phosphor icons, and
+follows the system light/dark setting. Photography is served from Unsplash's CDN (`PHOTOS` in `public/app.js`; each
+event's dashboard cover is picked by event type). Background videos are muted, loop only while on screen, and fall
+back to their poster frame when the visitor prefers reduced motion.
 
 ## Known limits / next steps
 
