@@ -1,0 +1,523 @@
+import type { RoleDefinition, TaskTemplate, Phase } from "../types.js";
+
+/**
+ * Every person a real event production would hire, mapped to an AI agent.
+ *
+ * This catalog is the "nothing gets missed" backbone: the planner staffs the
+ * roles an event needs (core for its type, or triggered by words in the
+ * brief), and each role brings its own task list with lead times and
+ * dependencies. Agents can still add tasks at runtime, but the catalog makes
+ * sure the boring-but-critical work (permits, insurance, accessibility,
+ * weather plans, load-out, vendor payments, thank-you notes) is always there.
+ */
+
+const t = (
+  key: string,
+  title: string,
+  phase: Phase,
+  dueDaysBefore: number,
+  description: string,
+  opts: Partial<TaskTemplate> = {},
+): TaskTemplate => ({ key, title, phase, dueDaysBefore, description, ...opts });
+
+const ALL = ["*"];
+const PUBLIC_EVENTS = ["conference", "concert", "festival", "product_launch", "workshop", "networking", "gala_fundraiser", "community", "trade_show", "hackathon", "sports"];
+const BIG_PRODUCTIONS = ["conference", "concert", "festival", "gala_fundraiser", "product_launch", "trade_show", "sports"];
+const CELEBRATIONS = ["wedding", "birthday", "private_party", "baby_shower", "graduation", "religious_cultural"];
+
+export const ROLES: RoleDefinition[] = [
+  // ───────────────────────────── Leadership ─────────────────────────────
+  {
+    id: "event_director",
+    title: "Event Director (Executive Producer)",
+    department: "Leadership",
+    mission: "Own the host's vision end to end, coordinate every agent, make trade-offs, and keep the host informed.",
+    responsibilities: ["Interpret the vision into a blueprint", "Set goals and success metrics", "Coordinate all agents and resolve conflicts", "Weekly host status reports", "Escalate decisions to the host"],
+    channels: ["email", "sms", "internal"], vendorCategories: [], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("blueprint", "Turn the vision into an event blueprint", "concept", 999, "Define theme, goals, guest experience, constraints and open questions."),
+      t("host_kickoff", "Kickoff summary to host", "concept", 998, "Send the host the blueprint, staffed agent roster, and the decisions needed from them.", { dependsOn: ["blueprint", "finance_manager.budget_plan"] }),
+      t("status_midpoint", "Mid-plan status report", "promotion", 21, "Summarize bookings, spend vs budget, risks and pending approvals to the host."),
+      t("final_brief", "Final production brief", "preparation", 3, "Compile run-of-show, vendor contacts, contingency plans into one document for host and vendors.", { dependsOn: ["day_of_coordinator.run_of_show"] }),
+    ],
+  },
+  {
+    id: "creative_director",
+    title: "Creative Director (Concept & Design)",
+    department: "Leadership",
+    mission: "Translate the vision into a cohesive look, feel and guest journey every vendor can execute.",
+    responsibilities: ["Mood board and style guide", "Color palette, typography, motifs", "Guest journey and signature moments", "Brief decor, florals, stationery, AV visuals"],
+    channels: ["email", "internal"], vendorCategories: ["designer"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("concept", "Creative concept & style guide", "concept", 997, "Moodboard keywords, palette, motifs, dress code and signature guest moments.", { dependsOn: ["event_director.blueprint"] }),
+      t("guest_journey", "Design the guest journey", "planning", 120, "Arrival → welcome → key moments → farewell, with sensory details for each.", { dependsOn: ["concept"] }),
+      t("design_review", "Review vendor design proposals", "booking", 45, "Check decor, florals, stationery and stage designs against the style guide.", { dependsOn: ["concept"] }),
+    ],
+  },
+  {
+    id: "finance_manager",
+    title: "Budget & Finance Manager",
+    department: "Leadership",
+    mission: "Protect the budget: allocate it, track every quote and commitment, schedule deposits and payments, and reconcile.",
+    responsibilities: ["Budget allocation by category", "Quote comparison", "Deposit & payment schedule (with host approval)", "Spend tracking and variance alerts", "Final reconciliation"],
+    channels: ["email", "internal"], vendorCategories: [], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("budget_plan", "Allocate budget by category", "concept", 996, "Split the total budget across categories with a contingency reserve.", { dependsOn: ["event_director.blueprint"] }),
+      t("payment_schedule", "Deposit & payment schedule", "booking", 60, "List every booked vendor's deposit and balance due dates; request host approval for each payment.", { dependsOn: ["venue_scout.book_venue"], requiresApproval: true }),
+      t("variance_check", "Budget variance check", "preparation", 14, "Compare committed spend vs plan, flag overruns, propose cuts."),
+      t("reconcile", "Final reconciliation & vendor payments", "wrapup", -7, "Confirm every invoice, final payments, deposits returned, and produce a spend report.", { dependsOn: ["day_of_coordinator.execute"], requiresApproval: true }),
+    ],
+  },
+  {
+    id: "legal_compliance",
+    title: "Permits, Contracts & Insurance Officer",
+    department: "Leadership",
+    mission: "Make the event legal and insured: permits, licenses, contracts, liability coverage, and policy compliance.",
+    responsibilities: ["Identify permits (noise, alcohol, fire, street closure, food)", "Event liability insurance", "Contract review (cancellation, force majeure, deposits)", "Music licensing", "Data privacy for registrations"],
+    channels: ["email", "voice"], vendorCategories: ["insurance", "permits office"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("permit_audit", "Identify required permits & licenses", "planning", 90, "Check local rules for alcohol, amplified sound, fire code occupancy, food service, street/park use, fireworks.", { dependsOn: ["event_director.blueprint"] }),
+      t("insurance", "Secure event liability insurance", "booking", 45, "Get quotes for one-day event liability (and liquor liability if serving alcohol); add venue as additional insured.", { requiresApproval: true, vendorCategory: "insurance" }),
+      t("contract_review", "Review all vendor contracts", "booking", 40, "Flag cancellation terms, deposits, overtime, force majeure, indemnity before host signs."),
+      t("permits_filed", "File permit applications", "booking", 45, "Submit applications and track approval status.", { dependsOn: ["permit_audit", "venue_scout.book_venue"], requiresApproval: true }),
+    ],
+  },
+
+  // ───────────────────────── Venue & Production ─────────────────────────
+  {
+    id: "venue_scout",
+    title: "Venue Scout & Booking Manager",
+    department: "Venue & Production",
+    mission: "Find, tour (virtually), negotiate and book the venue that fits the vision, headcount, budget and date.",
+    responsibilities: ["Shortlist venues", "Check availability and capacity", "Request proposals and floor plans", "Negotiate price/minimums", "Book with host approval", "Collect venue rules (load-in, curfew, vendor policies)"],
+    channels: ["email", "sms", "voice"], vendorCategories: ["venue"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("shortlist", "Shortlist venues", "sourcing", 180, "Find 5–8 venues matching capacity, style, location, accessibility and budget.", { dependsOn: ["event_director.blueprint", "finance_manager.budget_plan"], vendorCategory: "venue" }),
+      t("outreach", "Contact venues for availability & proposals", "sourcing", 170, "Email/call shortlisted venues for date availability, pricing, F&B minimums, floor plans and policies.", { dependsOn: ["shortlist"], vendorCategory: "venue" }),
+      t("book_venue", "Negotiate & book venue", "booking", 150, "Compare proposals, negotiate, and request host approval to sign and pay the deposit.", { dependsOn: ["outreach"], requiresApproval: true, vendorCategory: "venue" }),
+      t("venue_logistics", "Collect venue rules & logistics", "preparation", 30, "Load-in times, curfew, preferred vendors, power, Wi-Fi, parking, insurance certificates.", { dependsOn: ["book_venue"] }),
+    ],
+  },
+  {
+    id: "production_manager",
+    title: "Production Manager (AV, Lighting & Staging)",
+    department: "Venue & Production",
+    mission: "Make the event look and sound right: sound, lighting, stage, screens, power and technical crew.",
+    responsibilities: ["Technical rider", "AV vendor sourcing", "Stage and screen design", "Power & rigging", "Tech rehearsal"],
+    channels: ["email", "voice"], vendorCategories: ["av production", "lighting", "staging"],
+    coreFor: [...BIG_PRODUCTIONS, "wedding", "workshop", "hackathon"], optionalFor: CELEBRATIONS,
+    triggers: ["stage", "sound", "speaker", "speakers", "lighting", "screen", "projector", "microphone", "dj", "band", "live", "keynote", "presentation", "concert"],
+    tasks: [
+      t("tech_rider", "Write technical requirements", "planning", 90, "Sound, mics, lighting looks, screens, stage size, power, streaming needs.", { dependsOn: ["event_director.blueprint", "venue_scout.book_venue"] }),
+      t("av_quotes", "Get AV/production quotes", "sourcing", 75, "Request quotes from 3 AV companies against the technical rider.", { dependsOn: ["tech_rider"], vendorCategory: "av production" }),
+      t("book_av", "Book AV/production vendor", "booking", 60, "Select vendor and request host approval.", { dependsOn: ["av_quotes"], requiresApproval: true, vendorCategory: "av production" }),
+      t("tech_rehearsal", "Schedule tech rehearsal & cue sheet", "preparation", 2, "Lock sound check times, lighting cues and slide/video playback.", { dependsOn: ["book_av", "day_of_coordinator.run_of_show"] }),
+    ],
+  },
+  {
+    id: "rentals_manager",
+    title: "Rentals & Infrastructure Manager",
+    department: "Venue & Production",
+    mission: "Source everything physical the venue doesn't provide: furniture, tents, linens, tableware, restrooms, generators.",
+    responsibilities: ["Rental inventory from floor plan", "Tents/weather cover", "Portable restrooms, power, fencing", "Delivery and pickup windows"],
+    channels: ["email", "voice"], vendorCategories: ["party rentals", "tent rental", "portable restrooms", "generator rental"],
+    coreFor: ["wedding", "festival", "gala_fundraiser", "community", "sports"], optionalFor: ["private_party", "birthday", "religious_cultural", "graduation"],
+    triggers: ["tent", "outdoor", "backyard", "garden", "park", "beach", "field", "farm", "rooftop", "chairs", "tables", "marquee"],
+    tasks: [
+      t("inventory", "Build rentals inventory", "planning", 75, "From floor plan and headcount: tables, chairs, linens, tableware, lounge, tents, heaters, restrooms, power.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("rental_quotes", "Get rental quotes", "sourcing", 60, "Request quotes from 2–3 rental companies.", { dependsOn: ["inventory"], vendorCategory: "party rentals" }),
+      t("book_rentals", "Book rentals & delivery windows", "booking", 45, "Confirm order, delivery and pickup windows; request approval.", { dependsOn: ["rental_quotes"], requiresApproval: true, vendorCategory: "party rentals" }),
+    ],
+  },
+  {
+    id: "decor_designer",
+    title: "Decor & Styling Designer",
+    department: "Venue & Production",
+    mission: "Bring the creative concept to life in the space: decor, props, signage styling, table design, photo moments.",
+    responsibilities: ["Decor plan per zone", "Source decorators/props", "Table design", "Photo backdrop / installations", "Setup & strike plan"],
+    channels: ["email", "sms"], vendorCategories: ["event decorator", "prop rental", "balloon artist"],
+    coreFor: [...CELEBRATIONS, "gala_fundraiser", "product_launch", "networking"], optionalFor: ["conference", "corporate_offsite", "festival"],
+    triggers: ["decor", "decoration", "theme", "themed", "balloon", "backdrop", "installation", "aesthetic", "vibe", "styling", "gatsby", "boho", "rustic", "glam"],
+    tasks: [
+      t("decor_plan", "Decor plan by zone", "planning", 90, "Entrance, main room, tables, stage, photo moment, restrooms — items, quantities and look.", { dependsOn: ["creative_director.concept", "venue_scout.book_venue"] }),
+      t("decor_quotes", "Get decorator quotes", "sourcing", 70, "Brief 3 decorators with the style guide and request proposals.", { dependsOn: ["decor_plan"], vendorCategory: "event decorator" }),
+      t("book_decor", "Book decorator", "booking", 55, "Choose proposal and request host approval.", { dependsOn: ["decor_quotes"], requiresApproval: true, vendorCategory: "event decorator" }),
+    ],
+  },
+  {
+    id: "florist",
+    title: "Florist Coordinator",
+    department: "Venue & Production",
+    mission: "Source florals that match the palette, season and budget.",
+    responsibilities: ["Floral list", "Seasonal availability", "Florist quotes", "Delivery and setup"],
+    channels: ["email", "sms"], vendorCategories: ["florist"],
+    coreFor: ["wedding", "memorial", "gala_fundraiser"], optionalFor: CELEBRATIONS,
+    triggers: ["flower", "flowers", "floral", "bouquet", "centerpiece", "centrepiece", "garden", "roses", "peonies"],
+    tasks: [
+      t("floral_brief", "Floral brief", "planning", 75, "Personal flowers, centerpieces, installations; palette and seasonal options.", { dependsOn: ["creative_director.concept"] }),
+      t("florist_quotes", "Get florist quotes", "sourcing", 60, "Send brief to 3 florists.", { dependsOn: ["floral_brief"], vendorCategory: "florist" }),
+      t("book_florist", "Book florist", "booking", 45, "Select and request approval.", { dependsOn: ["florist_quotes"], requiresApproval: true, vendorCategory: "florist" }),
+    ],
+  },
+
+  // ─────────────────────────── Food & Beverage ──────────────────────────
+  {
+    id: "catering_manager",
+    title: "Catering Manager",
+    department: "Food & Beverage",
+    mission: "Feed every guest well, safely and on budget, respecting every dietary need.",
+    responsibilities: ["Menu concept & service style", "Dietary/allergen plan", "Caterer sourcing & tastings", "Final counts", "Staffing ratio"],
+    channels: ["email", "sms", "voice"], vendorCategories: ["caterer"],
+    coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("menu_brief", "Menu concept & dietary plan", "planning", 100, "Service style (plated/buffet/stations), courses, dietary and allergen coverage, kids menu, vendor meals.", { dependsOn: ["event_director.blueprint", "finance_manager.budget_plan"] }),
+      t("caterer_quotes", "Get caterer quotes", "sourcing", 90, "Request menus and per-head pricing from 3 caterers (check venue exclusive caterer first).", { dependsOn: ["menu_brief", "venue_scout.book_venue"], vendorCategory: "caterer" }),
+      t("book_caterer", "Book caterer & schedule tasting", "booking", 75, "Choose caterer, schedule tasting, request approval.", { dependsOn: ["caterer_quotes"], requiresApproval: true, vendorCategory: "caterer" }),
+      t("final_counts", "Send final headcount & dietary list", "preparation", 7, "Give caterer final guaranteed count and dietary/allergy list.", { dependsOn: ["book_caterer", "guest_manager.rsvp_tracking"] }),
+    ],
+  },
+  {
+    id: "beverage_manager",
+    title: "Bar & Beverage Manager",
+    department: "Food & Beverage",
+    mission: "Design and source the drinks program, including licensed bartending and non-alcoholic options.",
+    responsibilities: ["Drinks menu & signature cocktails", "Licensed bar service", "Quantities", "Responsible service plan"],
+    channels: ["email", "sms"], vendorCategories: ["mobile bar service", "bartender"],
+    coreFor: ["wedding", "gala_fundraiser", "networking", "private_party"], optionalFor: [...CELEBRATIONS, "product_launch", "corporate_offsite"],
+    triggers: ["bar", "cocktail", "cocktails", "wine", "beer", "drinks", "champagne", "open bar", "mocktail", "whiskey", "tasting"],
+    tasks: [
+      t("drinks_plan", "Drinks program & quantities", "planning", 60, "Signature drinks, beer/wine/spirits, zero-proof options, quantities per guest-hour.", { dependsOn: ["creative_director.concept"] }),
+      t("bar_quotes", "Get licensed bar service quotes", "sourcing", 50, "Contact bar services (check venue/caterer bar policy and liquor license).", { dependsOn: ["drinks_plan", "venue_scout.book_venue"], vendorCategory: "mobile bar service" }),
+      t("book_bar", "Book bar service", "booking", 40, "Select and request approval.", { dependsOn: ["bar_quotes"], requiresApproval: true, vendorCategory: "mobile bar service" }),
+    ],
+  },
+  {
+    id: "cake_dessert",
+    title: "Cake & Dessert Coordinator",
+    department: "Food & Beverage",
+    mission: "Source the cake or dessert experience that becomes a highlight.",
+    responsibilities: ["Cake/dessert design", "Bakery sourcing", "Allergen-safe options", "Delivery & display"],
+    channels: ["email", "sms"], vendorCategories: ["bakery", "dessert caterer"],
+    coreFor: ["wedding", "birthday", "baby_shower"], optionalFor: CELEBRATIONS,
+    triggers: ["cake", "dessert", "cupcake", "pastry", "sweets", "candy bar", "ice cream"],
+    tasks: [
+      t("dessert_brief", "Cake & dessert design brief", "planning", 45, "Servings, flavors, design aligned with style guide, allergen-free options.", { dependsOn: ["creative_director.concept"] }),
+      t("bakery_quotes", "Contact bakeries", "sourcing", 35, "Request designs and pricing from 3 bakeries.", { dependsOn: ["dessert_brief"], vendorCategory: "bakery" }),
+      t("book_bakery", "Order cake/desserts", "booking", 25, "Select and request approval.", { dependsOn: ["bakery_quotes"], requiresApproval: true, vendorCategory: "bakery" }),
+    ],
+  },
+
+  // ─────────────────────────── Guest Experience ─────────────────────────
+  {
+    id: "guest_manager",
+    title: "Guest List, Invitations & RSVP Manager",
+    department: "Guest Experience",
+    mission: "Get the right people invited, informed and confirmed — and make every guest feel personally looked after.",
+    responsibilities: ["Guest list & segments", "Save-the-dates and invitations", "RSVP tracking and reminders", "Seating plan", "Guest FAQ and concierge replies"],
+    channels: ["email", "sms"], vendorCategories: ["stationery"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("guest_list", "Collect guest list from host", "planning", 120, "Ask host for list (or audience definition for public events); segment VIP/family/speakers/press."),
+      t("save_the_date", "Send save-the-dates", "promotion", 90, "Draft save-the-date for host approval, then send by email/SMS.", { dependsOn: ["guest_list", "venue_scout.book_venue", "creative_director.concept"], requiresApproval: true }),
+      t("invitations", "Send invitations with RSVP", "promotion", 45, "Invitation with RSVP link, dietary question, plus-ones, accessibility needs.", { dependsOn: ["save_the_date"], requiresApproval: true }),
+      t("rsvp_tracking", "Track RSVPs & send reminders", "preparation", 14, "Chase non-responders, compile dietary and accessibility needs, final count.", { dependsOn: ["invitations"] }),
+      t("seating", "Seating plan & guest info pack", "preparation", 7, "Seating chart, directions, parking, dress code, schedule, Wi-Fi.", { dependsOn: ["rsvp_tracking"] }),
+    ],
+  },
+  {
+    id: "entertainment_booker",
+    title: "Entertainment & Talent Booker",
+    department: "Guest Experience",
+    mission: "Book the people who create energy: DJs, bands, MCs, performers, activities.",
+    responsibilities: ["Entertainment concept", "Talent sourcing & availability", "Riders & set times", "Music do/don't lists"],
+    channels: ["email", "sms", "voice"], vendorCategories: ["dj", "live band", "mc host", "performer"],
+    coreFor: ["wedding", "birthday", "concert", "festival", "gala_fundraiser", "private_party", "graduation"], optionalFor: ["networking", "product_launch", "corporate_offsite", "religious_cultural", "community"],
+    triggers: ["dj", "band", "music", "jazz", "dance", "dancing", "performer", "magician", "comedian", "mc", "emcee", "karaoke", "live music", "entertainment", "games", "photobooth", "photo booth"],
+    tasks: [
+      t("ent_concept", "Entertainment plan", "planning", 120, "Which acts, when, energy arc of the night, budget per act.", { dependsOn: ["creative_director.guest_journey"] }),
+      t("talent_outreach", "Contact talent for availability", "sourcing", 100, "Reach 3+ options per act for availability and fees.", { dependsOn: ["ent_concept", "venue_scout.book_venue"], vendorCategory: "live entertainment" }),
+      t("book_talent", "Book talent & collect riders", "booking", 80, "Select acts, request approval, collect technical/hospitality riders.", { dependsOn: ["talent_outreach"], requiresApproval: true, vendorCategory: "live entertainment" }),
+      t("set_times", "Confirm set times & music lists", "preparation", 10, "Confirm arrival, sound check, set times, must-play/do-not-play.", { dependsOn: ["book_talent", "day_of_coordinator.run_of_show"] }),
+    ],
+  },
+  {
+    id: "program_manager",
+    title: "Program, Agenda & Speaker Manager",
+    department: "Guest Experience",
+    mission: "Build the content program: agenda, speakers, panels, ceremonies, toasts and presentations.",
+    responsibilities: ["Agenda design", "Speaker recruitment & briefing", "Presentation collection", "Speaker travel coordination", "Moderator prep"],
+    channels: ["email", "voice"], vendorCategories: ["speaker bureau"],
+    coreFor: ["conference", "workshop", "hackathon", "product_launch", "trade_show", "gala_fundraiser", "corporate_offsite", "memorial"], optionalFor: ["wedding", "community", "religious_cultural"],
+    triggers: ["speaker", "speakers", "keynote", "panel", "agenda", "talk", "talks", "toast", "speech", "program", "awards", "presentation"],
+    tasks: [
+      t("agenda", "Draft agenda/program", "planning", 120, "Session list, timings, breaks, ceremony/toasts order.", { dependsOn: ["event_director.blueprint"] }),
+      t("speaker_outreach", "Invite speakers/presenters", "sourcing", 100, "Personalized invitations to speakers with topic, format and logistics.", { dependsOn: ["agenda"] }),
+      t("speaker_confirm", "Confirm speakers & collect bios/slides", "booking", 30, "Contracts/fees (with approval), bios, headshots, slide deadlines, AV needs.", { dependsOn: ["speaker_outreach"] }),
+    ],
+  },
+  {
+    id: "photo_video",
+    title: "Photography, Video & Livestream Producer",
+    department: "Guest Experience",
+    mission: "Capture the event so it lives on — and stream it if needed.",
+    responsibilities: ["Shot list", "Photographer/videographer booking", "Livestream setup", "Content delivery timelines"],
+    channels: ["email", "sms"], vendorCategories: ["photographer", "videographer"],
+    coreFor: ["wedding", "gala_fundraiser", "conference", "product_launch", "concert", "religious_cultural"], optionalFor: [...CELEBRATIONS, "festival", "networking", "sports"],
+    triggers: ["photo", "photos", "photographer", "video", "videographer", "film", "livestream", "stream", "content", "instagram", "reels", "drone"],
+    tasks: [
+      t("shot_list", "Shot list & coverage plan", "planning", 90, "Must-have shots, hours of coverage, deliverables, usage rights.", { dependsOn: ["creative_director.guest_journey"] }),
+      t("photo_quotes", "Contact photographers/videographers", "sourcing", 80, "Request portfolios and packages from 3+ creators.", { dependsOn: ["shot_list"], vendorCategory: "photographer" }),
+      t("book_photo", "Book photo/video", "booking", 65, "Select and request approval.", { dependsOn: ["photo_quotes"], requiresApproval: true, vendorCategory: "photographer" }),
+    ],
+  },
+  {
+    id: "hospitality_travel",
+    title: "Travel, Lodging & Transportation Coordinator",
+    department: "Guest Experience",
+    mission: "Get guests, speakers and VIPs there and home safely: hotel blocks, shuttles, parking, airport transfers.",
+    responsibilities: ["Hotel room blocks", "Shuttles and transfers", "Parking and valet", "Travel info for guests"],
+    channels: ["email", "voice"], vendorCategories: ["hotel", "shuttle service", "valet parking"],
+    coreFor: ["wedding", "conference", "corporate_offsite", "festival", "trade_show"], optionalFor: ["gala_fundraiser", "religious_cultural", "sports", "graduation"],
+    triggers: ["hotel", "out of town", "out-of-town", "destination", "travel", "shuttle", "transport", "parking", "valet", "flights", "accommodation", "lodging"],
+    tasks: [
+      t("travel_needs", "Estimate travel & lodging needs", "planning", 120, "How many guests travel, rooms per night, transfers, parking capacity.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("hotel_block", "Negotiate hotel room block", "booking", 100, "Contact nearby hotels for courtesy blocks with no attrition penalty where possible.", { dependsOn: ["travel_needs"], requiresApproval: true, vendorCategory: "hotel" }),
+      t("transport", "Book shuttles / transfers / parking", "booking", 45, "Shuttle schedule, valet or parking plan.", { dependsOn: ["travel_needs"], requiresApproval: true, vendorCategory: "shuttle service" }),
+    ],
+  },
+  {
+    id: "accessibility_inclusion",
+    title: "Accessibility & Inclusion Lead",
+    department: "Guest Experience",
+    mission: "Ensure every guest can attend fully: mobility, sensory, dietary, language, cultural and religious needs.",
+    responsibilities: ["Venue accessibility audit", "ASL/captioning", "Quiet room, prayer space, nursing room", "Inclusive language and imagery", "Accessible registration"],
+    channels: ["email", "internal"], vendorCategories: ["asl interpreter", "captioning"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("access_audit", "Accessibility audit of venue & plan", "planning", 60, "Step-free access, restrooms, seating, signage, lighting, sensory considerations.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("access_services", "Arrange access services", "booking", 30, "Interpreters, captioning, quiet room, reserved seating as needed by RSVPs.", { dependsOn: ["access_audit"] }),
+    ],
+  },
+  {
+    id: "staffing_manager",
+    title: "Staffing & Volunteer Manager",
+    department: "Guest Experience",
+    mission: "Put the right people on the floor: greeters, registration desk, runners, volunteers, coat check.",
+    responsibilities: ["Staffing plan by shift", "Recruit staff/volunteers", "Briefing pack", "Shift reminders"],
+    channels: ["email", "sms"], vendorCategories: ["event staffing agency"],
+    coreFor: ["festival", "conference", "concert", "sports", "trade_show", "community", "hackathon"], optionalFor: ["gala_fundraiser", "product_launch"],
+    triggers: ["volunteer", "volunteers", "staff", "ushers", "greeters", "coat check", "registration desk"],
+    tasks: [
+      t("staff_plan", "Staffing plan by shift", "planning", 60, "Roles, headcount, shift times, briefing schedule.", { dependsOn: ["event_director.blueprint"] }),
+      t("recruit", "Recruit staff / volunteers", "sourcing", 40, "Book agency staff or recruit volunteers with sign-up messaging.", { dependsOn: ["staff_plan"], vendorCategory: "event staffing agency" }),
+      t("staff_brief", "Staff briefing & shift reminders", "preparation", 3, "Send briefing pack and SMS reminders.", { dependsOn: ["recruit", "day_of_coordinator.run_of_show"] }),
+    ],
+  },
+  {
+    id: "security_safety",
+    title: "Safety, Security & Medical Lead",
+    department: "Operations",
+    mission: "Keep everyone safe: security, crowd management, first aid, emergency plans.",
+    responsibilities: ["Risk assessment", "Security staffing", "First aid / EMT", "Emergency & evacuation plan", "Incident reporting"],
+    channels: ["email", "voice"], vendorCategories: ["event security", "first aid service"],
+    coreFor: ["concert", "festival", "sports", "trade_show", "community"], optionalFor: ["conference", "gala_fundraiser", "wedding", "product_launch", "graduation"],
+    triggers: ["security", "vip", "celebrity", "crowd", "alcohol", "fireworks", "late night", "public", "large"],
+    tasks: [
+      t("risk_assessment", "Safety risk assessment", "planning", 75, "Crowd, alcohol, weather, fire, medical, lost child, VIP risks with mitigations.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("security_booking", "Book security & first aid", "booking", 40, "Licensed guards and EMT/first aid proportional to crowd size.", { dependsOn: ["risk_assessment"], requiresApproval: true, vendorCategory: "event security" }),
+      t("emergency_plan", "Emergency & evacuation plan", "preparation", 10, "Exits, assembly point, roles, emergency contacts, weather call-off rules.", { dependsOn: ["risk_assessment"] }),
+    ],
+  },
+  {
+    id: "kids_family",
+    title: "Kids & Family Coordinator",
+    department: "Guest Experience",
+    mission: "Make the event work for children and families: activities, childcare, safety.",
+    responsibilities: ["Kids activities", "Babysitting/childcare", "Kids menu", "Child safety"],
+    channels: ["email", "sms"], vendorCategories: ["kids entertainer", "childcare"],
+    coreFor: [], optionalFor: ["birthday", "wedding", "community", "baby_shower", "religious_cultural"],
+    triggers: ["kids", "children", "child", "family", "families", "toddler", "bouncy", "face painting", "babysitter"],
+    tasks: [
+      t("kids_plan", "Kids zone & childcare plan", "planning", 45, "Age groups, activities, supervision, kids menu.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("kids_booking", "Book kids entertainment / childcare", "booking", 30, "Vetted providers only; request approval.", { dependsOn: ["kids_plan"], requiresApproval: true, vendorCategory: "kids entertainer" }),
+    ],
+  },
+  {
+    id: "print_swag",
+    title: "Print, Signage, Swag & Favors Manager",
+    department: "Guest Experience",
+    mission: "Produce every printed and physical take-away: signage, badges, menus, programs, favors, merch.",
+    responsibilities: ["Signage map", "Badges & programs", "Favors/swag sourcing", "Print deadlines"],
+    channels: ["email"], vendorCategories: ["printing", "promotional products"],
+    coreFor: ["conference", "trade_show", "wedding", "product_launch", "hackathon"], optionalFor: [...CELEBRATIONS, "gala_fundraiser", "festival", "sports"],
+    triggers: ["favors", "favours", "swag", "merch", "badges", "signage", "programs", "menus", "gift bags", "goodie bags", "printed"],
+    tasks: [
+      t("print_list", "Signage & print list", "planning", 45, "Wayfinding, welcome sign, menus, programs, place cards, badges, banners.", { dependsOn: ["creative_director.concept"] }),
+      t("swag", "Source favors/swag", "sourcing", 40, "Quote favors or swag aligned with theme and budget.", { dependsOn: ["print_list"], vendorCategory: "promotional products" }),
+      t("print_order", "Place print & swag orders", "booking", 21, "Final proofs to host, order with delivery buffer.", { dependsOn: ["swag", "guest_manager.rsvp_tracking"], requiresApproval: true, vendorCategory: "printing" }),
+    ],
+  },
+  {
+    id: "ceremony_officiant",
+    title: "Ceremony & Traditions Coordinator",
+    department: "Guest Experience",
+    mission: "Plan ceremonies and cultural or religious traditions respectfully and accurately.",
+    responsibilities: ["Officiant/clergy booking", "Ritual items", "Ceremony script & order", "Cultural customs and etiquette"],
+    channels: ["email", "voice"], vendorCategories: ["officiant"],
+    coreFor: ["wedding", "religious_cultural", "memorial"], optionalFor: [],
+    triggers: ["ceremony", "officiant", "vows", "priest", "rabbi", "imam", "pandit", "blessing", "ritual", "tradition"],
+    tasks: [
+      t("ceremony_plan", "Ceremony plan & traditions", "planning", 120, "Order of ceremony, customs to honor, ritual items, readings.", { dependsOn: ["event_director.blueprint"] }),
+      t("book_officiant", "Book officiant", "booking", 90, "Contact and confirm officiant/clergy; request approval for fees.", { dependsOn: ["ceremony_plan"], requiresApproval: true, vendorCategory: "officiant" }),
+      t("rehearsal", "Schedule ceremony rehearsal", "preparation", 2, "Rehearsal time, participants, processional order.", { dependsOn: ["book_officiant"] }),
+    ],
+  },
+
+  // ─────────────────────────────── Marketing ────────────────────────────
+  {
+    id: "marketing_strategist",
+    title: "Marketing Strategist",
+    department: "Marketing & Growth",
+    mission: "Fill the room with the right audience: positioning, channel plan, campaigns, and conversion tracking.",
+    responsibilities: ["Audience & positioning", "Channel mix and calendar", "Email campaigns", "Paid ads (with approval)", "Partner/community outreach"],
+    channels: ["email", "internal"], vendorCategories: ["marketing agency"],
+    coreFor: PUBLIC_EVENTS, optionalFor: [], triggers: ["tickets", "sell out", "promote", "marketing", "audience", "attendees", "public", "open to all"],
+    tasks: [
+      t("positioning", "Audience, positioning & messaging", "planning", 100, "Who it's for, why they come, key messages, tagline.", { dependsOn: ["event_director.blueprint", "creative_director.concept"] }),
+      t("campaign_calendar", "Campaign calendar", "promotion", 90, "Announce → early bird → speakers/lineup reveals → last call → day-of.", { dependsOn: ["positioning"] }),
+      t("email_campaigns", "Draft email campaign series", "promotion", 75, "Announcement, reminders, last chance; needs host approval before sending.", { dependsOn: ["campaign_calendar"], requiresApproval: true }),
+      t("partner_outreach", "Partner & community outreach", "promotion", 60, "Pitch relevant communities, newsletters, partner orgs to cross-promote.", { dependsOn: ["positioning"] }),
+    ],
+  },
+  {
+    id: "social_media",
+    title: "Social Media & Content Manager",
+    department: "Marketing & Growth",
+    mission: "Build buzz before, live-cover during, and recap after — on the channels the audience uses.",
+    responsibilities: ["Content calendar", "Posts, captions, hashtags", "Influencer outreach", "Live coverage", "Recap content"],
+    channels: ["email", "internal"], vendorCategories: ["influencer"],
+    coreFor: PUBLIC_EVENTS, optionalFor: ["wedding", "birthday"],
+    triggers: ["instagram", "tiktok", "social", "viral", "hashtag", "influencer", "linkedin", "buzz"],
+    tasks: [
+      t("social_calendar", "Social content calendar", "promotion", 75, "Post plan per channel through event day with drafts.", { dependsOn: ["marketing_strategist.positioning"], requiresApproval: true }),
+      t("influencers", "Influencer & creator outreach", "promotion", 50, "Identify and pitch relevant creators.", { dependsOn: ["social_calendar"] }),
+      t("live_coverage", "Live coverage plan", "execution", 0, "Who posts what, when, on the day."),
+      t("recap", "Post-event recap content", "wrapup", -3, "Recap post, highlight reel brief, thank-you post.", { dependsOn: ["photo_video.book_photo"] }),
+    ],
+  },
+  {
+    id: "pr_media",
+    title: "PR & Media Relations Manager",
+    department: "Marketing & Growth",
+    mission: "Earn press coverage and manage media on the day.",
+    responsibilities: ["Press release", "Media list & pitching", "Press kit", "Media check-in & interviews"],
+    channels: ["email", "voice"], vendorCategories: ["pr agency"],
+    coreFor: ["product_launch", "gala_fundraiser", "festival", "concert"], optionalFor: ["conference", "community", "sports", "trade_show"],
+    triggers: ["press", "media", "pr", "journalists", "coverage", "announcement", "news"],
+    tasks: [
+      t("press_release", "Write press release & press kit", "promotion", 45, "Release, fact sheet, images, spokesperson quotes; host approval.", { dependsOn: ["marketing_strategist.positioning"], requiresApproval: true }),
+      t("media_pitch", "Pitch media", "promotion", 30, "Personalized pitches to relevant journalists and outlets.", { dependsOn: ["press_release"] }),
+    ],
+  },
+  {
+    id: "ticketing_registration",
+    title: "Ticketing & Registration Manager",
+    department: "Marketing & Growth",
+    mission: "Make it effortless to buy, register and check in — and track every attendee.",
+    responsibilities: ["Ticket tiers & pricing", "Registration page", "Promo codes", "Check-in & badge flow", "Refund policy"],
+    channels: ["email", "sms"], vendorCategories: ["ticketing platform"],
+    coreFor: ["conference", "concert", "festival", "workshop", "hackathon", "sports", "networking", "trade_show"], optionalFor: ["gala_fundraiser", "community"],
+    triggers: ["tickets", "ticket", "ticketed", "registration", "register", "sign up", "signup", "rsvp page", "early bird"],
+    tasks: [
+      t("ticket_plan", "Ticket tiers & pricing", "planning", 100, "Tiers, capacity per tier, early-bird dates, refund policy, fees.", { dependsOn: ["finance_manager.budget_plan"], requiresApproval: true }),
+      t("registration_page", "Launch registration page", "promotion", 90, "Configure ticketing platform and landing page copy.", { dependsOn: ["ticket_plan", "venue_scout.book_venue"], requiresApproval: true }),
+      t("checkin_flow", "Check-in flow & attendee comms", "preparation", 5, "QR check-in, know-before-you-go email, waitlist handling.", { dependsOn: ["registration_page"] }),
+    ],
+  },
+  {
+    id: "sponsorship_fundraising",
+    title: "Sponsorship & Fundraising Manager",
+    department: "Marketing & Growth",
+    mission: "Bring in money beyond tickets: sponsors, partners, donors, auctions.",
+    responsibilities: ["Sponsorship deck & tiers", "Prospect list & outreach", "Sponsor deliverables", "Auction / donation flow"],
+    channels: ["email", "voice"], vendorCategories: ["sponsor prospect"],
+    coreFor: ["conference", "festival", "gala_fundraiser", "hackathon", "sports", "trade_show"], optionalFor: ["community", "concert"],
+    triggers: ["sponsor", "sponsors", "sponsorship", "donor", "donors", "fundraise", "fundraising", "auction", "raise money", "partners"],
+    tasks: [
+      t("sponsor_deck", "Sponsorship tiers & deck", "planning", 120, "Tiers, benefits, pricing, audience stats.", { dependsOn: ["marketing_strategist.positioning"] }),
+      t("sponsor_outreach", "Sponsor prospecting & outreach", "sourcing", 100, "Build prospect list and send personalized pitches.", { dependsOn: ["sponsor_deck"] }),
+      t("sponsor_fulfilment", "Sponsor deliverables tracker", "preparation", 14, "Logos, booth space, mentions, tickets — confirm each.", { dependsOn: ["sponsor_outreach"] }),
+    ],
+  },
+
+  // ────────────────────────────── Operations ────────────────────────────
+  {
+    id: "logistics_manager",
+    title: "Logistics & Operations Manager",
+    department: "Operations",
+    mission: "Make the physical plan work: load-in/out schedule, deliveries, power, waste, weather backup.",
+    responsibilities: ["Vendor arrival schedule", "Load-in/load-out", "Weather contingency", "Waste & cleanup", "Supplies kit"],
+    channels: ["email", "sms", "voice"], vendorCategories: ["cleaning service", "waste management"], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("weather_plan", "Weather & contingency plan", "planning", 30, "Plan B for rain/heat/wind, decision deadline, backup vendors list.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("vendor_schedule", "Vendor arrival & load-in schedule", "preparation", 10, "Every vendor's arrival, setup window, contact, and load-out time.", { dependsOn: ["venue_scout.venue_logistics"] }),
+      t("vendor_confirmations", "Confirm every vendor (T-3 days)", "preparation", 3, "Text/call every booked vendor to reconfirm time, address, contact person.", { dependsOn: ["vendor_schedule"] }),
+      t("cleanup", "Cleanup & load-out", "execution", 0, "Strike plan, waste/recycling, lost & found, venue walkthrough for deposit.", { dependsOn: ["vendor_schedule"] }),
+    ],
+  },
+  {
+    id: "tech_virtual",
+    title: "Event Tech & Hybrid Experience Manager",
+    department: "Operations",
+    mission: "Run the digital layer: Wi-Fi, event app, virtual/hybrid platform, livestream, attendee tech.",
+    responsibilities: ["Wi-Fi capacity", "Virtual platform", "Event app / microsite", "Livestream production"],
+    channels: ["email"], vendorCategories: ["livestream production", "event wifi"],
+    coreFor: ["hackathon"], optionalFor: ["conference", "workshop", "trade_show", "memorial"],
+    triggers: ["virtual", "hybrid", "online", "zoom", "livestream", "stream", "remote attendees", "wifi", "wi-fi", "app"],
+    tasks: [
+      t("tech_plan", "Digital & hybrid plan", "planning", 60, "Wi-Fi load, platform choice, streaming workflow, remote attendee experience.", { dependsOn: ["venue_scout.book_venue"] }),
+      t("tech_booking", "Book tech/streaming vendors", "booking", 40, "Quotes and approval.", { dependsOn: ["tech_plan"], requiresApproval: true, vendorCategory: "livestream production" }),
+    ],
+  },
+  {
+    id: "sustainability",
+    title: "Sustainability Coordinator",
+    department: "Operations",
+    mission: "Shrink the event's footprint: waste, food donation, reusables, transport.",
+    responsibilities: ["Waste plan", "Food donation", "Reusable decor", "Low-carbon transport"],
+    channels: ["email"], vendorCategories: ["food rescue", "compost service"],
+    coreFor: [], optionalFor: ALL,
+    triggers: ["eco", "sustainable", "sustainability", "zero waste", "green", "carbon", "compost", "plastic-free", "plastic free"],
+    tasks: [
+      t("green_plan", "Sustainability plan", "planning", 45, "Reusables, compost/recycling, local sourcing, leftover food donation partner.", { dependsOn: ["catering_manager.menu_brief"] }),
+    ],
+  },
+  {
+    id: "day_of_coordinator",
+    title: "Day-of Coordinator (Show Caller)",
+    department: "Operations",
+    mission: "Run the day: the minute-by-minute run-of-show, every cue, every vendor, every surprise.",
+    responsibilities: ["Run-of-show", "Rehearsal", "On-site command & cueing", "Real-time issue handling", "Vendor check-in"],
+    channels: ["sms", "voice", "internal"], vendorCategories: [], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("run_of_show", "Build minute-by-minute run-of-show", "preparation", 14, "Every moment with time, owner, location, cue and backup.", { dependsOn: ["venue_scout.book_venue", "catering_manager.book_caterer"] }),
+      t("day_of_comms", "Day-of contact sheet & group texts", "preparation", 2, "Contact sheet for every vendor and key guest; SMS group for crew.", { dependsOn: ["run_of_show", "logistics_manager.vendor_schedule"] }),
+      t("execute", "Run the event", "execution", 0, "Check-in vendors, call cues, handle issues, keep host stress-free.", { dependsOn: ["day_of_comms"] }),
+    ],
+  },
+  {
+    id: "post_event",
+    title: "Post-Event & Insights Manager",
+    department: "Operations",
+    mission: "Close the loop: thank-yous, feedback, deliverables, reviews, lessons learned.",
+    responsibilities: ["Thank-you messages to guests, speakers, vendors, sponsors", "Feedback survey", "Collect photos/video deliverables", "Post-event report & ROI"],
+    channels: ["email", "sms"], vendorCategories: [], coreFor: ALL, optionalFor: [], triggers: [],
+    tasks: [
+      t("thank_yous", "Send thank-you messages", "wrapup", -2, "Personalized thank-yous to guests, speakers, sponsors and vendors.", { dependsOn: ["day_of_coordinator.execute"], requiresApproval: true }),
+      t("survey", "Feedback survey", "wrapup", -2, "Short survey to attendees and host; NPS and highlights.", { dependsOn: ["day_of_coordinator.execute"] }),
+      t("report", "Post-event report", "wrapup", -14, "Attendance, spend vs budget, feedback, media coverage, lessons for next time.", { dependsOn: ["survey", "finance_manager.reconcile"] }),
+    ],
+  },
+];
+
+export function getRole(id: string): RoleDefinition | undefined {
+  return ROLES.find((r) => r.id === id);
+}
