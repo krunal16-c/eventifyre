@@ -128,7 +128,7 @@ async function renderLanding(scrollTo) {
         <h1 data-rise style="--i:0">Describe the event. <em>Your AI team runs it.</em></h1>
         <p data-rise style="--i:1">Venue, catering, vendors, marketing and the day itself, planned and booked by agents who check with you first.</p>
         <div class="hero__ctas" data-rise style="--i:2">
-          <a class="btn btn--primary" href="#/plan">Plan my event <i class="ph ph-arrow-right"></i></a>
+          <a class="btn btn--primary" href="#/plan">Plan my event <span class="btn__chip"><i class="ph ph-arrow-right"></i></span></a>
           <a class="btn btn--glass" href="#/how">How it works</a>
         </div>
       </div>
@@ -211,7 +211,7 @@ async function renderLanding(scrollTo) {
           ${intakeFields(questions)}
           <div class="form__extras"><label class="check"><input type="checkbox" name="fastForward"><span>Demo mode: run day-of and wrap-up tasks now instead of waiting for the date</span></label></div>
           <div class="form__submit">
-            <button class="btn btn--primary" type="submit">Assemble my team <i class="ph ph-arrow-right"></i></button>
+            <button class="btn btn--primary" type="submit">Assemble my team <span class="btn__chip"><i class="ph ph-arrow-right"></i></span></button>
             <span class="form__error" id="err" role="alert"></span>
           </div>
         </form>
@@ -219,10 +219,10 @@ async function renderLanding(scrollTo) {
     </section>
 
     <footer class="footer"><div class="wrap">
-      <div><a href="#/" class="logo"><svg class="logo__mark" aria-hidden="true"><use href="#logo-mark"/></svg><span class="logo__word">Eventifyre</span></a><p>An AI event team that plans, books and runs your event, with you approving every commitment.</p></div>
+      <div><a href="#/" class="logo"><svg class="logo__mark" aria-hidden="true"><use href="#logo-mark"/></svg><span class="logo__word">eventifyre</span></a><p>An AI event team that plans, books and runs your event, with you approving every commitment.</p></div>
       <div><h4>Platform status</h4><div class="status" id="status">${statusLine()}</div></div>
       <div><h4>Credits</h4><p style="margin-top:0">Photography from Unsplash. Video from Mixkit.<br>&copy; 2026 Eventifyre</p></div>
-    </div><div class="wrap"><div class="footer__word" aria-hidden="true">Eventifyre</div></div></footer>`;
+    </div><div class="wrap"><div class="footer__word" aria-hidden="true">eventifyre</div></div></footer>`;
   healthReady.then(() => { const el = document.getElementById("status"); if (el) el.innerHTML = statusLine(); });
 
   // Transparent nav over the hero, frosted once the hero scrolls away.
@@ -300,7 +300,7 @@ function bindIntake(questions) {
       return;
     }
     btn.disabled = true;
-    btn.innerHTML = `Assembling your team <i class="ph ph-spinner-gap"></i>`;
+    btn.innerHTML = `Assembling your team <span class="btn__chip"><i class="ph ph-spinner-gap spin"></i></span>`;
     try {
       const { id } = await api("/api/events", { method: "POST", body: { brief, fastForward: fd.get("fastForward") === "on" } });
       location.hash = `#/event/${id}`;
@@ -310,14 +310,14 @@ function bindIntake(questions) {
       for (const i of issues) { const el = document.getElementById(`f-${i.field}-err`); if (el) el.textContent = i.message; }
       document.getElementById("err").textContent = issues.length ? "Please check the highlighted fields." : err.message;
       btn.disabled = false;
-      btn.innerHTML = `Assemble my team <i class="ph ph-arrow-right"></i>`;
+      btn.innerHTML = `Assemble my team <span class="btn__chip"><i class="ph ph-arrow-right"></i></span>`;
     }
   });
 }
 
 // ───────────────────────── Event list ─────────────────────────
 async function renderEvents() {
-  $app.innerHTML = `<div class="page"><div class="wrap"><h1>My events</h1><div class="event-list">${[0, 1, 2].map(() => `<div class="skel" style="height:280px;border-radius:16px"></div>`).join("")}</div></div></div>`;
+  $app.innerHTML = `<div class="page"><div class="wrap"><h1>My events</h1><div class="event-list">${[0, 1, 2].map(() => `<div class="skel" style="height:280px;border-radius:0"></div>`).join("")}</div></div></div>`;
   const events = await api("/api/events");
   $app.innerHTML = `<div class="page"><div class="wrap"><h1>My events</h1>${events.length ? `<div class="event-list">${events.map((e, i) => `
     <a class="event-card" href="#/event/${esc(e.id)}" data-reveal style="--i:${i % 6}">
@@ -363,7 +363,7 @@ function skeletonDashboard(ev) {
       ${ev?.error ? `<p style="margin-top:8px;color:#ffb3bf">${esc(ev.error)}</p>` : ""}
     </div></div></div>
     <div class="stats">${[0, 1, 2, 3, 4].map(() => `<div class="stat"><div class="skel" style="height:28px;width:60%"></div><div class="skel" style="height:12px;width:80%;margin-top:10px"></div></div>`).join("")}</div>
-    <div class="cols" style="margin-top:24px"><div class="skel" style="height:320px;border-radius:16px"></div><div class="skel" style="height:320px;border-radius:16px"></div></div>
+    <div class="cols" style="margin-top:24px"><div class="skel" style="height:320px;border-radius:0"></div><div class="skel" style="height:320px;border-radius:0"></div></div>
   </div></div>`;
 }
 
@@ -453,7 +453,7 @@ function approvals(ev, cur) {
       <pre>${esc(a.details)}</pre>
       ${a.options?.length ? `<div class="sub" style="margin-top:6px">Options: ${a.options.map(esc).join(" / ")}</div>` : ""}
       ${a.status === "pending" ? `<label class="sub" for="note-${esc(a.id)}" style="display:block;margin-top:12px">Note to the agent (optional)</label><textarea id="note-${esc(a.id)}" placeholder="For example: negotiate 10% lower, or go with option B"></textarea>
-        <div class="btns"><button class="btn btn--ok btn--sm" data-decide="${esc(a.id)}:yes"><i class="ph ph-check"></i>Approve</button><button class="btn btn--danger btn--sm" data-decide="${esc(a.id)}:no">Decline</button></div>`
+        <div class="btns"><button class="btn btn--primary btn--sm" data-decide="${esc(a.id)}:yes">Approve <span class="btn__chip"><i class="ph ph-check"></i></span></button><button class="btn btn--danger btn--sm" data-decide="${esc(a.id)}:no">Decline</button></div>`
         : a.decisionNote ? `<div class="sub" style="margin-top:6px">Note: ${esc(a.decisionNote)}</div>` : ""}
     </div>`;
   return `<div class="stack">${pending.map(card).join("") || empty("ph-seal-check", "Nothing needs your approval right now. Your agents will ask before anything is booked, paid, signed or published.")}</div>

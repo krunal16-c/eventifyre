@@ -199,8 +199,8 @@ test/                  node:test suite
 The web UI uses one rose accent (from the original brand) on neutral greys, Bricolage Grotesque for headlines,
 Geist / Geist Mono for text and numbers, and Phosphor icons. The theme button in the nav cycles System, Light and
 Dark; the choice is remembered in the browser and applied before first paint. The logo (`public/favicon.svg`, and the
-`#logo-mark` symbol in `index.html`) is a flame with a celebration spark cut out of it, in the original
-coral-to-rose brand gradient (`#ff0844` to `#ffb199`). Photography is served from Unsplash's CDN (`PHOTOS` in `public/app.js`; each
+`#logo-mark` symbol in `index.html`) is an "E" built from three bars that doubles as a run-of-show, with the middle
+bar in the accent rose. The UI uses square corners throughout and hairline borders instead of shadows. Photography is served from Unsplash's CDN (`PHOTOS` in `public/app.js`; each
 event's dashboard cover is picked by event type). Background videos are muted, loop only while on screen, and fall
 back to their poster frame when the visitor prefers reduced motion.
 

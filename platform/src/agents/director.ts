@@ -94,7 +94,7 @@ export function heuristicBlueprint(brief: Brief): Blueprint {
     title: shortTitle(vision) || profile.label,
     eventType: profile.id,
     summary: vision.slice(0, 400),
-    theme: styleKeywords.slice(0, 3).join(" · ") || profile.label,
+    theme: styleKeywords.slice(0, 3).join(", ") || profile.label,
     goals: ["Deliver the host's vision on time and on budget", "Guests leave delighted and talking about it", "Zero surprises for the host on the day"],
     date: brief.date ?? null,
     durationHours: profile.defaultDurationHours,
